@@ -86,8 +86,12 @@ std::shared_ptr<TTree> constructComparisonTree(TFile* file, std::string dut) {
     // Signal info
     int output_total_signal;
     std::vector<int> output_signal;
+    std::vector<int> output_seed_signal;
+    std::vector<int> output_clus_signal;
     output_tree->Branch("totalSignal", &output_total_signal);
     output_tree->Branch("signal", &output_signal);
+    output_tree->Branch("seed_signal", &output_seed_signal);
+    output_tree->Branch("cluster_signal", &output_clus_signal);
     // Single pixel row / col
     std::vector<int> output_rows;
     std::vector<int> output_cols;
@@ -158,6 +162,52 @@ std::shared_ptr<TTree> constructComparisonTree(TFile* file, std::string dut) {
             output_cols.push_back(hit->getPixel().getIndex().x());
         }
 
+	    // Set cluster and seed information
+	    const int NCOLS = 48;
+	    const int NROWS = 16;
+	    int PIX_SEED_THR = 500; // ADC
+	    int PIX_CLU_THR = 500; // ADC
+
+	    int pix_map_sig[NCOLS][NROWS]={0};
+
+	    for(auto& hit : input_hits) {
+	       auto _row = hit->getPixel().getIndex().y();
+	       auto _col = hit->getPixel().getIndex().x();
+	       pix_map_sig[_col][_row] += hit->getSignal();
+	    }
+
+	    int tmp_seed_signal=0;
+	    int x_seed = 0;
+	    int y_seed = 0;
+	    int tmp_clu_sig =0;
+	    const size_t clustersize = static_cast<size_t>(std::round(4/2));
+
+	    for(int i=0; i<NCOLS; i++){
+	    	for(int j=0; j<NROWS; j++) {
+	    		if(tmp_seed_signal < pix_map_sig[i][j]){
+	    		       	tmp_seed_signal = pix_map_sig[i][j];
+	    			    x_seed = i;
+	    			    y_seed = j;
+	    		}
+	    	}
+        }
+
+        output_seed_signal.clear();
+        output_clus_signal.clear();
+        if(tmp_seed_signal > PIX_SEED_THR){ 
+            output_seed_signal.push_back(tmp_seed_signal);
+	        for(unsigned i= x_seed - clustersize; i< x_seed + clustersize; i++){
+	        	for(unsigned j= y_seed - clustersize; j< y_seed + clustersize; j++){
+	        		if( (i>0) && (i<NCOLS) && (j>0) && (j<NROWS)){
+	        			tmp_clu_sig += pix_map_sig[i][j];
+	        		}
+	        	}
+            }
+	        if(tmp_clu_sig > PIX_CLU_THR){
+	            output_clus_signal.push_back(tmp_clu_sig);
+            }
+        }
+
         // Get information about the actual track
         output_track_count = 1 + input_particles.size();
         output_track_x = 0;
@@ -189,6 +239,7 @@ std::shared_ptr<TTree> constructComparisonTree(TFile* file, std::string dut) {
 
         output_tree->Fill();
     }
+
 
     return output_tree;
 }

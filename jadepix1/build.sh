@@ -31,6 +31,7 @@ fi
 
 case $option in
     0.1) echo "Building allpix-squared..."
+        cd ~
         git clone https://gitlab.cern.ch/allpix-squared/allpix-squared.git
         cd allpix-squared
         mkdir build

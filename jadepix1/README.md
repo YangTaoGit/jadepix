@@ -12,6 +12,10 @@ This have to be done when you log in every time:
 
 > source setup.sh
 
+To use master allpix2: 
+
+> source setup.sh master 
+
 
 ## Submit jobs
 
